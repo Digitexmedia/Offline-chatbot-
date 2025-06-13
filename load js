@@ -1,0 +1,52 @@
+import time
+import json
+import requests
+import os
+
+def detect_emotion(text):
+    if any(word in text.lower() for word in ['sad', 'hurt', 'cry', 'miss']):
+        return 'emotional'
+    if any(word in text.lower() for word in ['lol', 'joke', 'funny', 'haha']):
+        return 'joke'
+    if any(word in text.lower() for word in ['deal', 'payment', 'business']):
+        return 'business'
+    if any(word in text.lower() for word in ['pic', 'photo', 'image']):
+        return 'wants_picture'
+    return 'casual'
+
+def build_reply(text, mood):
+    if mood == 'joke':
+        return "😂 Haha, you're funny! Tell me another one."
+    if mood == 'business':
+        return "🧾 Let's talk business. What's your offer?"
+    if mood == 'emotional':
+        return "💖 I'm here for you. Talk to me."
+    if mood == 'wants_picture':
+        return "Hmm... Can you tell me why you want my picture first?"
+    return "😊 I'm listening... Tell me more."
+
+last_msg = ''
+
+while True:
+    try:
+        with open('latest_message.json', 'r') as f:
+            data = json.load(f)
+
+        body = data.get('body', '')
+        sender = data.get('from', '')
+
+        if body != last_msg:
+            last_msg = body
+            mood = detect_emotion(body)
+            reply = build_reply(body, mood)
+
+            # If valid reason to send picture
+            if mood == 'wants_picture' and any(kw in body.lower() for kw in ['who are you', 'let me see']):
+                requests.get(f"http://localhost:5000/send-image?number={sender}&caption=Okay, here you go 😊")
+            else:
+                requests.get(f"http://localhost:5000/send?number={sender}&message={reply}")
+
+    except Exception as e:
+        print("Waiting for messages...")
+
+    time.sleep(3)
